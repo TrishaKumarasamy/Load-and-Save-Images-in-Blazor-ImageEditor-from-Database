@@ -1,0 +1,58 @@
+﻿@page "/"
+@using Newtonsoft.Json
+@using Syncfusion.Blazor.Buttons
+@using Syncfusion.Blazor.ImageEditor
+@using System.Text;
+@using System.Net.Http
+@using System.Net.Http.Headers
+@using System.Threading.Tasks
+@inject HttpClient HttpClient
+
+<SfImageEditor @ref="imageEditor" Height="550px" />
+
+<SfButton @onclick="SaveImageToDB">Save Image to DB</SfButton>
+<SfButton @onclick="LoadImageFromDB">Load Image from DB</SfButton>
+
+@code {
+    private SfImageEditor imageEditor;
+    // Method to load image from he database
+    public async Task LoadImageFromDB()
+    {
+        var response = await HttpClient.GetAsync("https://localhost:7127/api/image/1");
+        if (response.IsSuccessStatusCode)
+        {
+            var base64Image = await response.Content.ReadAsStringAsync();
+            if (!string.IsNullOrEmpty(base64Image))
+            {
+                await imageEditor.OpenAsync($"data:image/png;base64,{base64Image}");
+            }
+        }
+    }
+
+    // Method to save the image to the database
+    public async Task SaveImageToDB()
+    {
+        if (imageEditor != null)
+        {
+            var imageBytes = await imageEditor.GetImageDataAsync();
+            if (imageBytes != null)
+            {
+                var formData = new MultipartFormDataContent();
+                var imageContent = new ByteArrayContent(imageBytes);
+                imageContent.Headers.ContentType = MediaTypeHeaderValue.Parse("image/png");
+                formData.Add(imageContent, "imageFile", "image.png");
+                formData.Add(new StringContent("1"), "id"); // ID for the image
+
+                var response = await HttpClient.PostAsync("https://localhost:7127/api/image", formData);
+                if (response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine("Image saved successfully");
+                }
+                else
+                {
+                    Console.WriteLine($"Error saving image: {response.ReasonPhrase}");
+                }
+            }
+        }
+    }
+}
